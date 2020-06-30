@@ -26,14 +26,26 @@ import java.io.IOException
 // GitHub page API is 1 based: https://developer.github.com/v3/#pagination
 private const val GITHUB_STARTING_PAGE_INDEX = 1
 
+private const val ON_2ND_LOAD = 0
+private const val ON_INITIAL_LOAD = 1
+
+// TODO: update to `ON_INITIAL_LOAD` to fail on initial load
+private const val FAIL = ON_2ND_LOAD
+
 class GithubPagingSource(
         private val service: GithubService,
         private val query: String
 ) : PagingSource<Int, Repo>() {
+
+    private var i = 0
+
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Repo> {
+        i++
         val position = params.key ?: GITHUB_STARTING_PAGE_INDEX
         val apiQuery = query + IN_QUALIFIER
         return try {
+            // make every other request error out
+            if (i % 2 == FAIL) throw IOException()
             val response = service.searchRepos(apiQuery, position, params.loadSize)
             val repos = response.items
             LoadResult.Page(
